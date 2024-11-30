@@ -1,0 +1,48 @@
+************************** ЗАПИСЬ СЛОВ В ФАЙЛ *******************************
+
+File myFile = new File("text.txt");
+        FileWriter writer = new FileWriter(myFile, true);
+        writer.write("some gamedata");
+        writer.close();
+
+*************************** КЛАСС ОБРАБОТКИ ИГРОВЫХ ДАННЫХ *********************
+
+public Class GameDataService(Date) {
+
+        String player;
+        int date;
+        int totalWinCount;
+        int totalLoseCount;
+        int winLoseRate;
+        int totalWordСount;
+        int totalCharCount;
+        int averageWordRate;
+        int averageCharRate;
+
+        public void saveData (HashMap < String, Person > gameData)  {
+
+
+            FileOutputStream f = new FileOutputStream(GAME_DATA);
+            ObjectOutputStream o = new ObjectOutputStream(f);
+            o.writeObject(gameData);
+            o.close();
+            f.close();
+        }
+
+//        public HashMap<String, Person> loadGameData () {
+//            FileInputStream fi = new FileInputStream(new File("gamestats.txt"));
+//            ObjectInputStream oi = new ObjectInputStream(fi);
+//            HashMap<String, Person> data = (HashMap<String, Person>) oi.readObject();
+//            oi.close;
+//            fi.close;
+//            return data;
+}
+
+messageService (получение и отправка мессаг в чат)
+count (подсчет слов и букв)
+метод обработки сообщений (if)
+void writer (запись данных в файл) - серия, суперсерия (игровой день)
+timer
+
+
+
