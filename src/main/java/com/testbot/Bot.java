@@ -86,22 +86,14 @@ public class Bot extends TelegramLongPollingBot {
         }
 
         if (update.hasMessage() && update.getMessage().getText().equals("/cancel")
-                && playerNames.contains(update.getMessage().getFrom().getUserName())) {
-            if (isTimerSuccess) {
-                try {
-                    sendMessage(mainChatId, "Отменяю раунд...");
-                    todayRoundsCount--;
-                } catch (TelegramApiException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            if (isTimerActive) {
-                try {
-                    sendMessage(mainChatId, "Прерываю игру...");
-                    gameRestart();
-                } catch (TelegramApiException e) {
-                    throw new RuntimeException(e);
-                }
+                && playerNames.contains(update.getMessage().getFrom().getUserName())
+                && isTimerActive) {
+
+            try {
+                sendMessage(mainChatId, "Прерываю игру...отменяю раунд");
+                gameRestart();
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
             }
         }
         if (update.getMessage().getText().startsWith("/")           //подсчет слов и букв
