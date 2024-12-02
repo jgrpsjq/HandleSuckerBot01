@@ -17,7 +17,9 @@ public class Bot extends TelegramLongPollingBot {
     String gameWord;
     String playerName;
     String[] finalWords = {};
+    String[] wordsToSubtract = {};
     boolean isTimerActive = false;
+    boolean isApproved = false;
     boolean isWordsCounted = false;
     boolean isTimerSuccess = false;
     boolean isGameWordSet = false;
@@ -37,12 +39,12 @@ public class Bot extends TelegramLongPollingBot {
 
     public void onUpdateReceived(@NotNull Update update) {   // Общение с юзером
 
-        if (update.getMessage().getText().equals("/ready")
+        if (update.getMessage().getText().equals("/ready") && !isTimerSuccess
                 && !playerNames.contains(update.getMessage().getFrom().getUserName())) {  // статус Ready
-            playerName = update.getMessage().getFrom().getUserName();
-            playerNames.add(playerName);    // массив готовых игроков
+            //playerName = update.getMessage().getFrom().getUserName();
+            playerNames.add(update.getMessage().getFrom().getUserName());    // массив готовых игроков
             try {
-                sendMessage(mainChatId, playerName + " готов");
+                sendMessage(mainChatId, update.getMessage().getFrom().getUserName() + " готов");
             } catch (TelegramApiException e) {
                 throw new RuntimeException(e);
             }
@@ -51,6 +53,7 @@ public class Bot extends TelegramLongPollingBot {
         if (update.getMessage().getText().startsWith("/word ")
                 && playerNames.contains(update.getMessage().getFrom().getUserName())) {
             try {
+                System.out.println(playerNames.size());
                 gameWord = update.getMessage().getText().substring(6);
                 isGameWordSet = true;
                 sendMessage(mainChatId, "Слово назначено: "
@@ -99,80 +102,82 @@ public class Bot extends TelegramLongPollingBot {
                         }
                     }
                 }
-
             }
         }
 
-        if (update.getMessage().getText().startsWith("/")
+        if (update.getMessage().getText().startsWith("/")               // вызов подсчёта
                 && playerNames.contains(update.getMessage().getFrom().getUserName())
                 && isTimerSuccess) {
-
-            if (playerNames.contains(update.getMessage().getFrom().getUserName())
-                    && update.getMessage().getText().startsWith("/")
-                    && isTimerSuccess) {
-                if (isWordsCounted) {
-                    try {
-                        subtraction(update);        //удаление ошибочных слов
-                        sendMessage(mainChatId, "***** UPDATE *****" + "\n" + playerName + " :"
-                                + "\nСлов: " + finalWordList.size()
-                                + "\nБукв: " + charCount);
-                    } catch (TelegramApiException e) {
-                        throw new RuntimeException();
-                    }
-                }
-                if (!isWordsCounted) {
-                    try {
-                        count(update);                     // первичный подсчёт слов и букв
-                        isWordsCounted = true;
-                        sendMessage(mainChatId, playerName +
-                                " :" + "\nСлов: " + wordCount
-                                + "\nБукв: " + charCount);
-                    } catch (TelegramApiException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-
+            count(update);                     // подсчёт слов и букв
+            isWordsCounted = true;
         }
+
+        if (update.getMessage().getText().equals("/approve")) {
+            try {
+                gameRestart();
+                sendMessage(mainChatId, "Раунд завершён!");
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
     }
 
     public void count(@NotNull Update update) {
 
-        String[] lines = update.getMessage().getText().split("\n"); // массив слов
-        lines[0] = lines[0].replace("/", ""); // удаление / косой
-        int i;
-        for (i = 0; i < lines.length; i++) {
-            lines[i] = lines[i].strip();
-        }
-        Set<String> wordSet = new HashSet<>(Arrays.asList(lines)); // удаление дубликатов через Set
-        String[] finalWords = wordSet.toArray(new String[wordSet.size()]); // возврат в новый массив
+        if (!isWordsCounted) {
 
-        for (String s : finalWords) {
-            charCount += s.length(); // подсчёт букв
-        }
-        wordCount = finalWords.length;
-    }
+            String[] lines = update.getMessage().getText().split("\n"); // массив слов
+            lines[0] = lines[0].replace("/", ""); // удаление /
+            for (int i = 0; i < lines.length; i++) {
+                lines[i] = lines[i].strip();
+            }
+            Set<String> wordSet = new HashSet<>(Arrays.asList(lines)); // удаление дубликатов через Set
+            String[] finalWords = wordSet.toArray(new String[wordSet.size()]);
 
-    public void subtraction(@NotNull Update update) {       // SUBSTRACTION
-
-        String[] wordsToSubtract = update.getMessage().getText().split("\n"); // массив слов на удаление
-        wordsToSubtract[0] = wordsToSubtract[0].replace("/", ""); // удаление / косой
-        int charsToSubtract = 0;
-        finalWordList = Arrays.asList((finalWords));
-
-        for (int i = 0; i < wordsToSubtract.length; i++) {
-            wordsToSubtract[i] = wordsToSubtract[i].strip();
+            for (String s : finalWords) {
+                charCount += s.length(); // подсчёт букв
+            }
+            wordCount = finalWords.length;
+            try {
+                sendMessage(mainChatId, update.getMessage().getFrom().getUserName() +
+                        " :" + "\nСлов: " + wordCount
+                        + "\nБукв: " + charCount);
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
         }
 
-        for (int i = 0; i < finalWordList.size(); i++) {
-            finalWordList.remove(wordsToSubtract[i]);
-        }
+        if (isWordsCounted) {
 
-        for (String s : wordsToSubtract) {
-            charsToSubtract += s.length(); // подсчёт букв для удаления
+            String[] wordsToSubtract = update.getMessage().getText().split("\n"); // массив слов на удаление
+            wordsToSubtract[0] = wordsToSubtract[0].replace("/", ""); // удаление / косой
+            int charsToSubtract = 0;
+            finalWordList = Arrays.asList((finalWords));
+
+            for (int i = 0; i < wordsToSubtract.length; i++) {     // удаление пробелов
+                wordsToSubtract[i] = wordsToSubtract[i].strip();
+            }
+
+            for (String s : wordsToSubtract) {
+                charsToSubtract += s.length(); // подсчёт букв
+            }
+
+            for (int i = 0; i < finalWordList.size(); i++) {      // удаление заявленных слов
+                for (String s : wordsToSubtract) {
+                    if (finalWordList.get(i).equals(s)) {
+                        finalWordList.remove(i);
+                    }
+                }
+            }
+            try {
+                sendMessage(mainChatId, "***** UPDATE *****" + "\n" + update.getMessage().getFrom().getUserName() + " :"
+                        + "\nСлов: " + (wordCount - wordsToSubtract.length)
+                        + "\nБукв: " + (charCount - charsToSubtract));
+            } catch (TelegramApiException e) {
+                throw new RuntimeException();
+            }
         }
-        wordCount -= wordsToSubtract.length;
-        charCount -= charsToSubtract;
     }
 
     public void sendMessage(long id, String msgText) throws TelegramApiException { // метод отправки сообщения юзеру
@@ -189,6 +194,7 @@ public class Bot extends TelegramLongPollingBot {
         isGameWordSet = false;
         isRoundSuccess = false;
         isTimerSuccess = false;
+        isApproved = false;
         playerNames.clear();
     }
 
@@ -213,3 +219,12 @@ public class Bot extends TelegramLongPollingBot {
     }
 }
 
+//        for (int i = 0; i < finalWords.length; i++) {
+//            for (int j = 0; j < wordsToSubtract.length; j++) {
+//                if (finalWords[i].equals(wordsToSubtract[j])) {
+//                    finalWords[i] = "";;
+//                }
+//            }
+//        }
+//        int finalI = i;
+//        finalWordList.removeIf(element -> element.equals(wordsToSubtract[finalI]));
